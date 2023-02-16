@@ -3,7 +3,7 @@
 ### R 4.0.4
 
 
-#### Using simple simulated examples, this script aims to introduce the methods described in the paper to explore, and potentially overcome, some of the possible biases when trying to estimate causal effects from observational research. The first two sections cover different aspects of confounding bias (confounder mis-specification of observed covariates and residual confounding of unmeasured covariates), while the second concerns selection bias due to missing data.
+#### Using simple simulated examples, this script aims to introduce the methods described in the paper to explore, and potentially overcome, some of the possible biases when trying to estimate causal effects from observational research. The first two sections cover different aspects of confounding bias (confounder mis-specification of observed covariates and residual confounding of unmeasured covariates), while the third concerns selection bias due to missing data.
 
 
 ###################################################################################################################
@@ -14,10 +14,12 @@ rm(list = ls())
 #install.packages("dagitty")
 #install.packages("EValue")
 #install.packages("mice")
+#install.packages("ggplot2")
 
 library(dagitty)
 library(EValue)
 library(mice)
+library(ggplot2)
 
 ## Note that the 'NARMICE' package for not-at-random multiple imputation is based on the 'mice' package, so has to be installed in a different location to avoid over-writing the original 'mice' package (as we use the original 'mice' package first, we will load this NARMICE package later on).
 #library(devtools)
@@ -469,11 +471,8 @@ test <- mice(df_i, m = 5, method = meth_i, predictorMatrix = pred_i, print = TRU
 test
 table(test$nmis)
 
-# Now run the proper imputation model. Will create 50 imputed datasets here, with a burn-in period of 10 iterations
-imp_i <- mice(df_i, m = 50, method = meth_i, predictorMatrix = pred_i, print = TRUE, maxit = 10, seed = 98765)
-
-# Display convergence plots, to make sure that convergence between chains reached - All look well-mixed and reached a steady state
-plot(imp_i)
+# Now run the proper imputation model. Will create 50 imputed datasets here (note that as there is only one variable with missing values to impute, we only need to use a burn-in period of 1 iteration - if there are >1 variables with missing data, this needs to be increased [say, a burn-in period of 10 iterations] so that the imputed values of one variable can influence the imputed values of another variable)
+imp_i <- mice(df_i, m = 50, method = meth_i, predictorMatrix = pred_i, print = TRUE, maxit = 1, seed = 98765)
 
 # Now run substantive analysis model in each imputed dataset and combine using Rubin's rules
 model_i <- with(imp_i, glm(donate ~ relig + sep, family = "binomial"))
@@ -485,7 +484,7 @@ cbind(OR = exp(results_i$estimate[results_i$term == "relig1"]),
       lower_CI = exp(results_i$`2.5 %`[results_i$term == "relig1"]),
       upper_CI = exp(results_i$`97.5 %`[results_i$term == "relig1"]))
 
-# The odds ratio from the imputed data is now identical to the true model (OR = 2.5), showing how we can recover unbiased causal estimates using multiple imputation (assuming all assumptions are met)
+# The odds ratio from the imputed data is now practically identical to the true model (OR = 2.5), showing how we can recover unbiased causal estimates using multiple imputation (assuming all assumptions are met)
 exp(cbind(OR = coef(summary(mod2_i))[, 1], confint(mod2_i)))
 exp(cbind(OR = coef(summary(mod1))[, 1], confint(mod1)))
 
@@ -530,11 +529,8 @@ test <- mice(df_ii, m = 5, method = meth_ii, predictorMatrix = pred_ii, print = 
 test
 table(test$nmis)
 
-# Now run the proper imputation model. Will create 50 imputed datasets here, with a burn-in period of 10 iterations
-imp_ii <- mice(df_ii, m = 50, method = meth_ii, predictorMatrix = pred_ii, print = TRUE, maxit = 10, seed = 56789)
-
-# Display convergence plots, to make sure that convergence between chains reached - All look well-mixed and reached a steady state
-plot(imp_ii)
+# Now run the proper imputation model. Will create 50 imputed datasets here, again with a burn-in period of just 1 iteration
+imp_ii <- mice(df_ii, m = 50, method = meth_ii, predictorMatrix = pred_ii, print = TRUE, maxit = 1, seed = 56789)
 
 # Now run substantive analysis model in each imputed dataset and combine using Rubin's rules
 model_ii <- with(imp_ii, glm(donate ~ relig + sep, family = "binomial"))
@@ -546,7 +542,7 @@ cbind(OR = exp(results_ii$estimate[results_ii$term == "relig1"]),
       lower_CI = exp(results_ii$`2.5 %`[results_ii$term == "relig1"]),
       upper_CI = exp(results_ii$`97.5 %`[results_ii$term == "relig1"]))
 
-# Here, the odds ratio from the imputed data (OR = 1.97) is *not* identical to the true model (OR = 2.5). The imputed results are closer to the truth than the complete-case analysis results (OR = 1.69), showing that some of the bias has been addressed (this is the bias due to the mediator causing selection), but not all of this. This example shows how multiple imputation does not recover true parameter estimates, if the missing-at-random assumption is not met.
+# Here, the odds ratio from the imputed data (OR = 2.00) is *not* identical to the true model (OR = 2.5). The imputed results are closer to the truth than the complete-case analysis results (OR = 1.69), showing that some of the bias has been addressed (this is the bias due to the mediator causing selection), but not all of this. This example shows how multiple imputation does not recover true parameter estimates, if the missing-at-random assumption is not met.
 exp(cbind(OR = coef(summary(mod2_ii))[, 1], confint(mod2_ii)))
 exp(cbind(OR = coef(summary(mod1))[, 1], confint(mod1)))
 
@@ -614,9 +610,9 @@ meth
 meth["donate"] <- "logregSens"
 meth
 
-# Choose number of imputations and burn-in period - Given computational burden will just run 25 imputations per CSP, with a burn-in period of 5 (from the previous convergence plots it looks like a steady state gets reached quite early on, so this should be fine).
-narmice_numimps <- 25
-narmice_numiter <- 5
+# Choose number of imputations and burn-in period - As only 1 variable to impute, the computational burden burden is quite low, so will run 50 imputations per CSP, with a burn-in period of 1 (note that with more variables to impute and a greater number of burn-in iterations, the time taken for this NARMICE method to run can quickly spiral upwards).
+narmice_numimps <- 50
+narmice_numiter <- 1
 
 # To collect the parameters of interest
 tipping <- as.data.frame(array(dim = c(dim = length(seq.int(-3, 1, by = 0.25)), 8))) # Number of sensitivity values we're going to try (varying the CSP from -3 to 1, in steps of 0.25), plus the number of parameters we're going to store (here, is 8 [see row below])
@@ -671,12 +667,12 @@ tipping$lowerCI_or <- exp(tipping$lower_ci)
 tipping$upperCI_or <- exp(tipping$upper_ci)
 tipping
 
-## As mentioned above, as we simulated this data we know that the true CSP should be around -1.11. Looking at this table, we can see that the religiosity OR for CSP values near -1.11 are near the true value of 2.5. This is much closer to the truth than our previous standard MI results, which gave an OR = 1.97 (copied below for reference). So this NARMICE method appeared to do a good job of removing bias due to data being missing-not-at-random.
+## As mentioned above, as we simulated this data we know that the true CSP should be around -1.11. Looking at this table, we can see that the religiosity OR for CSP values near -1.11 are near the true value of 2.5. This is much closer to the truth than our previous standard MI results, which gave an OR = 2.00 (copied below for reference). So this NARMICE method appeared to do a good job of removing bias due to data being missing-not-at-random.
 cbind(OR = exp(results_ii$estimate[results_ii$term == "relig1"]), 
       lower_CI = exp(results_ii$`2.5 %`[results_ii$term == "relig1"]),
       upper_CI = exp(results_ii$`97.5 %`[results_ii$term == "relig1"]))
 
-## However, ordinarily we would not know the true CSP value, hence why we performed a tipping-point style NARMICE analysis to see how various CSP values impacted results. As can be seen in the table - and more clearly in the plots below - across all CSP values explored here, the association between religiosity and blood donation is still positive (from ~3.7 at the lowest CSP value, to ~1.6 at the highest CSP value). This suggests that the direction of this effect is robust even to severe selection effects; using the prevalence estimates and the MSP, we could also try to narrow this range further still to provide more accurate estimates.
+## However, ordinarily we would not know the true CSP value, hence why we performed a tipping-point style NARMICE analysis to see how various CSP values impacted results. As can be seen in the table - and more clearly in the plots below - across all CSP values explored here, the association between religiosity and blood donation is still positive (from ~3.8 at the lowest CSP value, to ~1.6 at the highest CSP value). This suggests that the direction of this effect is robust even to severe selection effects; using the prevalence estimates and the MSP, we could also try to narrow this range further still to provide more accurate estimates.
 
 
 ## Plot the delta/CSP and IMOR (ignorable missingness odds ratio) and associated estimated difference in religiosity odds ratio. The blue dashed line gives the true CSP.
