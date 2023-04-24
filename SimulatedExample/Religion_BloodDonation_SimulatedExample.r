@@ -182,6 +182,7 @@ plot(dag_residConfounding)
 
 # Set a seed, so is reproducible
 set.seed(883751)
+n <- 15000
 
 # Simulate SEP - As not caused by anything, just do 50/50 split
 sep <- rbinom(n = n, size = 1, prob = 0.5)
@@ -275,6 +276,7 @@ plot(dag_selection1)
 
 # Set a seed, so is reproducible
 set.seed(883751)
+n <- 15000
 
 # Simulate religiosity - Not caused by anything. Approx. 50% religious
 relig <- rbinom(n = n, size = 1, prob = 0.5)
@@ -562,7 +564,7 @@ library(mice, lib.loc = "C:/Temp/mice_test")
 df_narmice <- as.data.frame(cbind(sep, wellbeing, relig, donate, selection_ii))
 head(df_narmice)
 
-# Code outcome as missing if 'selection_ii' = 0. Additionally, for NARMICE, need to include missingness indicators for all variables with missing data, so will do that here - Will swap the 'selection_ii' variable so that missingness = 1, and rename this to 'M_donate', to make clearer.
+# Code outcome as missing if 'selection_ii' = 0. Additionally, for NARMICE, recommendation is to include missingness indicators for all variables with missing data, so will do that here - Will swap the 'selection_ii' variable so that missingness = 1, and rename this to 'M_donate', to make clearer.
 df_narmice$donate[df_narmice$selection_ii == 0] <- NA
 df_narmice$M_donate <- 1 - df_narmice$selection_ii
 df_narmice$selection_ii <- NULL
@@ -626,7 +628,7 @@ for (i in seq.int(-3, 1, by = 0.25)) {
   k <- k+1 
   print(paste0("CSP = ", i))
   
-  # specify a delta/CSP value for the prediction equation for missing infection data
+  # specify a delta/CSP value for the prediction equation for missing data
   pSens[["donate"]]<-list(c(i))
   
   # NARMICE imputation
@@ -717,5 +719,307 @@ plot(delta_prev_plot)
 
 
 
+
+### Simple simulation example to replicate NARMICE results in the paper, showing that if the exposure does not cause selection/missingness in the outcome, then all outcome MNAR scenarios will produce broadly similar results, regardless of CSP value
+
+## DAG this up, then simulate some data
+dag_selection3_iii <- dagitty('dag {
+                Religiosity [pos = "0,2"]
+                BloodDonation [pos = "2,2"]
+                M_donation [pos = "1,3"]
+                Selection [pos = "1,4"]
+                
+                
+                Religiosity -> BloodDonation
+                BloodDonation -> M_donation
+                M_donation -> Selection
+                }')
+plot(dag_selection3_iii)
+
+# Set a seed, so is reproducible
+set.seed(883751)
+n <- 15000
+
+# Simulate religiosity - Caused by nothing. Approx. 50% religious
+relig <- rbinom(n = n, size = 1, prob = 0.5)
+table(relig)
+
+# Simulate blood donation - Caused by religiosity, which increases blood donation (approx. 30% donated)
+donate_p <- plogis(log(0.3) + (log(2) * relig))
+donate <- rbinom(n = n, size = 1, prob = donate_p)
+table(donate)
+
+
+## First, let's look at the true exposure-outcome association on the whole dataset (i.e., no selection)
+mod1 <- glm(donate ~ relig, family = "binomial")
+exp(cbind(OR = coef(summary(mod1))[, 1], confint(mod1)))
+
+
+### Next, we'll introduce some selection into this model. To keep things simple, we'll imagine that all variables are fully-observed, other than our outcome blood donation - So it's clear that only this variable has missing data, we'll call missingness in this variable 'M_donation', which in turn causes 'selection' into the complete-case analysis. Here, only the outcome 'blood donation' will cause missing data (so blood donation is MNAR) - Approx. 75% missing data in both (to have a strong selection effect)
+selection_iii_p <- plogis(log(3) + (log(3) * donate))
+selection_iii <- rbinom(n = n, size = 1, prob = selection_iii_p)
+table(selection_iii)
+
+
+## Note that, in this scenario, as just outcome is MNAR will not get bias (for binary outcomes with logistic model, only observe selection bias if both exposure *and* outcome relate to selection; this is different from continuous outcomes and linear models, where outcome-only MNAR will result in bias towards the null). As a reminder here, the true effect is an odds ratio of 2.11:
+exp(cbind(OR = coef(summary(mod1))[, 1], confint(mod1)))
+
+# Now to include selection - Result is very similar, an OR of 2.05
+mod2_iii <- glm(donate ~ relig, family = "binomial", subset = selection_iii == 1)
+exp(cbind(OR = coef(summary(mod2_iii))[, 1], confint(mod2_iii)))
+
+
+### Now perform a NARMICE analysis, varying the outcome MNAR assumption
+
+# Put the relevant data into a data frame
+df_narmice <- as.data.frame(cbind(relig, donate, selection_iii))
+head(df_narmice)
+
+# Code outcome as missing if 'selection_iii' = 0. Additionally, for NARMICE, recommendation is to include missingness indicators for all variables with missing data, so will do that here - Will swap the 'selection_iii' variable so that missingness = 1, and rename this to 'M_donate', to make clearer.
+df_narmice$donate[df_narmice$selection_iii == 0] <- NA
+df_narmice$M_donate <- 1 - df_narmice$selection_iii
+df_narmice$selection_iii <- NULL
+head(df_narmice)
+
+# Convert binary/categorical variables to factors (need this for MICE to work)
+df_narmice$relig <- as.factor(df_narmice$relig)
+df_narmice$donate <- as.factor(df_narmice$donate)
+df_narmice$M_donate <- as.factor(df_narmice$M_donate)
+
+# Quick check of the data
+summary(df_narmice)
+str(df_narmice)
+
+
+## Set up prediction matrix for the imputation
+ini <- mice(df_narmice, maxit = 0, print = TRUE)
+
+# Specify the prediction matrix for the observable data - And edit so that the missingness markers don't predict the variables they represent
+pred <- ini$predictorMatrix
+pred
+
+pred["donate", "M_donate"] <- 0
+pred
+
+# Set-up the prediction matrix for the unidentifiable part of the model (i.e., the missing-not-at-random element)
+# In this case the whole matrix should be zeroes because the unidentifiable part of the imputation model contains a single constant (CSP*M) rather than additional contributions from the other variables in the dataset
+predSens <- ini$predictorMatrix
+predSens
+
+predSens[predSens == 1] <- 0
+predSens
+
+# Set up list with sensitivity parameter values (currently all blank - to be filled in below)
+pSens <- rep(list(list("")), ncol(df_narmice))
+names(pSens) <- names(df_narmice)
+pSens
+
+# Set up vector describing manner of imputation for each variable - As we want to run vary the association between donation and it's missingness, we specify this as 'logregSens', which is a logistic sensitivity analysis.
+meth <- ini$method
+meth
+
+meth["donate"] <- "logregSens"
+meth
+
+# Choose number of imputations and burn-in period - As only 1 variable to impute, the computational burden burden is quite low, so will run 50 imputations per CSP, with a burn-in period of 1 (note that with more variables to impute and a greater number of burn-in iterations, the time taken for this NARMICE method to run can quickly spiral upwards).
+narmice_numimps <- 50
+narmice_numiter <- 1
+
+# To collect the parameters of interest
+tipping <- as.data.frame(array(dim = c(dim = length(seq.int(-3, 1, by = 0.5)), 8))) # Number of sensitivity values we're going to try (varying the CSP from -3 to 1, in steps of 0.5), plus the number of parameters we're going to store (here, is 8 [see row below])
+colnames(tipping) <- c("csp", "msp", "imor", "sampprev", "beta", "se_beta", "lower_ci", "upper_ci")
+tipping
+
+# Looping over delta/CSP values (i) - A CSP of -3 means that individuals with missing blood donation data have -3 lower log-odds of having given blood, compared to those with data (conditional on all other covariates); the converse applies to positive CSPs (i.e., those with missing data having greater likelihood of having given blood), while a CSP of 0 should approximately correspond to a standard MI model, as there is no adjustment for data potentially being missing-not-at-random. As we simulated this data, we know that the true CSP should be approximately log(0.33), which is -1.11 (we know this, because the true causal effect of donation on selection - i.e., having observed blood donation data - is log(3), which we reverse to get the odds ratio of having missing data); ordinarily, of course, we would not know this, hence why we are exploring a range of parameter values.
+set.seed(771396)
+k <- 0
+for (i in seq.int(-3, 1, by = 0.5)) {
+  k <- k+1 
+  print(paste0("CSP = ", i))
+  
+  # specify a delta/CSP value for the prediction equation for missing data
+  pSens[["donate"]]<-list(c(i))
+  
+  # NARMICE imputation
+  imp_NARMICE <- mice(df_narmice, m = narmice_numimps, method = meth, predictorMatrix = pred,
+                      predictorSens=predSens, parmSens=pSens, print = TRUE, maxit = narmice_numiter)
+  
+  # Derive the MSP for the given CSP value
+  msp <- round(summary(pool(with(imp_NARMICE, 
+                                 glm(donate ~ M_donate, family = "binomial")))), 3)
+  
+  # Derive the prevalence of blood donation in sample
+  wholesampprev <- round(summary(pool(with(imp_NARMICE, 
+                                           glm(donate ~ 1, family = binomial(link = "identity"))))), 3)
+  
+  # Calculate the adjusted odds ratio in these imputed datasets
+  newest <- round(summary(pool(with(imp_NARMICE, 
+                                    glm(donate ~ relig, family = "binomial")))), 3)
+  
+  # Store these estimates in the 'tipping' dataframe
+  tipping[k,1] <- i
+  tipping[k,2] <- msp["M_donate1", "est"]
+  tipping[k,3] <- exp(msp["M_donate1", "est"])
+  tipping[k,4] <- wholesampprev["(Intercept)", "est"]  
+  tipping[k,5] <- newest["relig2", "est"]
+  tipping[k,6] <- newest["relig2", "se"]
+  tipping[k,7] <- newest["relig2", "lo 95"]
+  tipping[k,8] <- newest["relig2", "hi 95"]
+  
+  print(tipping[k,])
+}
+
+# Look at the 'tipping' output which contains all the values/estimates
+tipping
+
+# Convert the log odds to ORs
+tipping$or <- exp(tipping$beta)
+tipping$lowerCI_or <- exp(tipping$lower_ci)
+tipping$upperCI_or <- exp(tipping$upper_ci)
+tipping
+
+
+### Can see here that there is little difference in the odds ratios for this range of CSP values, as religiosity does not cause misingness in the outcome. If we repeat the code above, this time including religiosity as a cause of missingness in the outcome, then we will observe much more variation in the odds ratios by different CSP values - Let's code this below.
+
+# Here's the DAG
+dag_selection3_iv <- dagitty('dag {
+                Religiosity [pos = "0,2"]
+                BloodDonation [pos = "2,2"]
+                M_donation [pos = "1,3"]
+                Selection [pos = "1,4"]
+                
+                
+                Religiosity -> BloodDonation
+                Religiosity -> M_donation
+                BloodDonation -> M_donation
+                M_donation -> Selection
+                }')
+plot(dag_selection3_iv)
+
+# And here's how to code this up
+selection_iv_p <- plogis(log(1.5) + (log(3) * relig) + (log(3) * donate))
+selection_iv <- rbinom(n = n, size = 1, prob = selection_iv_p)
+table(selection_iv)
+
+
+## In this scenario, as the exposure and outcome both cause missingness, there will be selection bias. As a reminder here, the true effect is an odds ratio of 2.11:
+exp(cbind(OR = coef(summary(mod1))[, 1], confint(mod1)))
+
+# Now to include selection - Now there's much more bias, as the OR = 1.75
+mod2_iv <- glm(donate ~ relig, family = "binomial", subset = selection_iv == 1)
+exp(cbind(OR = coef(summary(mod2_iv))[, 1], confint(mod2_iv)))
+
+
+### Now perform a NARMICE analysis, varying the outcome MNAR assumption
+
+# Put the relevant data into a data frame
+df_narmice <- as.data.frame(cbind(relig, donate, selection_iv))
+head(df_narmice)
+
+# Code outcome as missing if 'selection_iv' = 0. Additionally, for NARMICE, recommendation is to include missingness indicators for all variables with missing data, so will do that here - Will swap the 'selection_iv' variable so that missingness = 1, and rename this to 'M_donate', to make clearer.
+df_narmice$donate[df_narmice$selection_iv == 0] <- NA
+df_narmice$M_donate <- 1 - df_narmice$selection_iv
+df_narmice$selection_iv <- NULL
+head(df_narmice)
+
+# Convert binary/categorical variables to factors (need this for MICE to work)
+df_narmice$relig <- as.factor(df_narmice$relig)
+df_narmice$donate <- as.factor(df_narmice$donate)
+df_narmice$M_donate <- as.factor(df_narmice$M_donate)
+
+# Quick check of the data
+summary(df_narmice)
+str(df_narmice)
+
+
+## Set up prediction matrix for the imputation
+ini <- mice(df_narmice, maxit = 0, print = TRUE)
+
+# Specify the prediction matrix for the observable data - And edit so that the missingness markers don't predict the variables they represent
+pred <- ini$predictorMatrix
+pred
+
+pred["donate", "M_donate"] <- 0
+pred
+
+# Set-up the prediction matrix for the unidentifiable part of the model (i.e., the missing-not-at-random element)
+# In this case the whole matrix should be zeroes because the unidentifiable part of the imputation model contains a single constant (CSP*M) rather than additional contributions from the other variables in the dataset
+predSens <- ini$predictorMatrix
+predSens
+
+predSens[predSens == 1] <- 0
+predSens
+
+# Set up list with sensitivity parameter values (currently all blank - to be filled in below)
+pSens <- rep(list(list("")), ncol(df_narmice))
+names(pSens) <- names(df_narmice)
+pSens
+
+# Set up vector describing manner of imputation for each variable - As we want to run vary the association between donation and it's missingness, we specify this as 'logregSens', which is a logistic sensitivity analysis.
+meth <- ini$method
+meth
+
+meth["donate"] <- "logregSens"
+meth
+
+# Choose number of imputations and burn-in period - As only 1 variable to impute, the computational burden burden is quite low, so will run 50 imputations per CSP, with a burn-in period of 1 (note that with more variables to impute and a greater number of burn-in iterations, the time taken for this NARMICE method to run can quickly spiral upwards).
+narmice_numimps <- 50
+narmice_numiter <- 1
+
+# To collect the parameters of interest
+tipping_iv <- as.data.frame(array(dim = c(dim = length(seq.int(-3, 1, by = 0.5)), 8))) # Number of sensitivity values we're going to try (varying the CSP from -3 to 1, in steps of 0.5), plus the number of parameters we're going to store (here, is 8 [see row below])
+colnames(tipping_iv) <- c("csp", "msp", "imor", "sampprev", "beta", "se_beta", "lower_ci", "upper_ci")
+tipping_iv
+
+# Looping over delta/CSP values (i) - A CSP of -3 means that individuals with missing blood donation data have -3 lower log-odds of having given blood, compared to those with data (conditional on all other covariates); the converse applies to positive CSPs (i.e., those with missing data having greater likelihood of having given blood), while a CSP of 0 should approximately correspond to a standard MI model, as there is no adjustment for data potentially being missing-not-at-random. As we simulated this data, we know that the true CSP should be approximately log(0.33), which is -1.11 (we know this, because the true causal effect of donation on selection - i.e., having observed blood donation data - is log(3), which we reverse to get the odds ratio of having missing data); ordinarily, of course, we would not know this, hence why we are exploring a range of parameter values.
+set.seed(196704)
+k <- 0
+for (i in seq.int(-3, 1, by = 0.5)) {
+  k <- k+1 
+  print(paste0("CSP = ", i))
+  
+  # specify a delta/CSP value for the prediction equation for missing data
+  pSens[["donate"]]<-list(c(i))
+  
+  # NARMICE imputation
+  imp_NARMICE <- mice(df_narmice, m = narmice_numimps, method = meth, predictorMatrix = pred,
+                      predictorSens=predSens, parmSens=pSens, print = TRUE, maxit = narmice_numiter)
+  
+  # Derive the MSP for the given CSP value
+  msp <- round(summary(pool(with(imp_NARMICE, 
+                                 glm(donate ~ M_donate, family = "binomial")))), 3)
+  
+  # Derive the prevalence of blood donation in sample
+  wholesampprev <- round(summary(pool(with(imp_NARMICE, 
+                                           glm(donate ~ 1, family = binomial(link = "identity"))))), 3)
+  
+  # Calculate the adjusted odds ratio in these imputed datasets
+  newest <- round(summary(pool(with(imp_NARMICE, 
+                                    glm(donate ~ relig, family = "binomial")))), 3)
+  
+  # Store these estimates in the 'tipping_iv' dataframe
+  tipping_iv[k,1] <- i
+  tipping_iv[k,2] <- msp["M_donate1", "est"]
+  tipping_iv[k,3] <- exp(msp["M_donate1", "est"])
+  tipping_iv[k,4] <- wholesampprev["(Intercept)", "est"]  
+  tipping_iv[k,5] <- newest["relig2", "est"]
+  tipping_iv[k,6] <- newest["relig2", "se"]
+  tipping_iv[k,7] <- newest["relig2", "lo 95"]
+  tipping_iv[k,8] <- newest["relig2", "hi 95"]
+  
+  print(tipping_iv[k,])
+}
+
+# Look at the 'tipping_iv' output which contains all the values/estimates
+tipping_iv
+
+# Convert the log odds to ORs
+tipping_iv$or <- exp(tipping_iv$beta)
+tipping_iv$lowerCI_or <- exp(tipping_iv$lower_ci)
+tipping_iv$upperCI_or <- exp(tipping_iv$upper_ci)
+tipping_iv
+
+
+### Now that the exposure causes selection/missingness, there is much more variation in the exposure-outcome association by different CSP values.
 
 
