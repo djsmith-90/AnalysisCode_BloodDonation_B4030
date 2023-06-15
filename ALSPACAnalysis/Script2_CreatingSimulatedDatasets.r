@@ -53,13 +53,6 @@ compare(data_mum_syn, data_mum, stat = "counts")
 dev.off()
 
 
-# Extract the actual dataset (rather than it being stored within a list)
-data_mum_syn_df <- data_mum_syn$syn
-head(data_mum_syn_df)
-glimpse(data_mum_syn_df)
-summary(data_mum_syn_df)
-
-
 ## Simple analysis of blood donation as outcome and religious belief and exposure to show that get similar results in both datasets (i.e., that the structures of the dataset are preserved)
 model.real <- glm(mum_donate ~ mum_belief, family = "binomial", data = data_mum)
 summary(model.real)
@@ -90,6 +83,17 @@ compare(model.syn2, data_mum)
 pdf("./Results/ComparingObservedVsSyntheticData/ComparingAdjustedModel_mothers.pdf", height = 8, width = 12)
 compare(model.syn2, data_mum)
 dev.off()
+
+
+### Adding in a variable called 'FALSE_DATA', with the value 'FALSE_DATA' for all observations, as an additional safety check to users know the dataset is synthetic
+data_mum_syn$syn <- cbind(FALSE_DATA = rep("FALSE_DATA", nrow(data_mum_syn$syn)), data_mum_syn$syn)
+summary(data_mum_syn)
+
+# Extract the synthetic dataset (rather than it being stored within a list)
+data_mum_syn_df <- data_mum_syn$syn
+head(data_mum_syn_df)
+glimpse(data_mum_syn_df)
+summary(data_mum_syn_df)
 
 
 ### Store the synthetic dataset for others to use
@@ -131,13 +135,6 @@ compare(data_partner_syn, data_partner, stat = "counts")
 dev.off()
 
 
-# Extract the actual dataset (rather than it being stored within a list)
-data_partner_syn_df <- data_partner_syn$syn
-head(data_partner_syn_df)
-glimpse(data_partner_syn_df)
-summary(data_partner_syn_df)
-
-
 ## Simple analysis of blood donation as outcome and religious belief and exposure to show that get similar results in both datasets (i.e., that the structures of the dataset are preserved)
 model.real_partner <- glm(partner_donate ~ partner_belief, family = "binomial", data = data_partner)
 summary(model.real_partner)
@@ -168,6 +165,17 @@ compare(model.syn2_partner, data_partner)
 pdf("./Results/ComparingObservedVsSyntheticData/ComparingAdjustedModel_partners.pdf", height = 8, width = 12)
 compare(model.syn2_partner, data_partner)
 dev.off()
+
+
+### Adding in a variable called 'FALSE_DATA', with the value 'FALSE_DATA' for all observations, as an additional safety check to users know the dataset is synthetic
+data_partner_syn$syn <- cbind(FALSE_DATA = rep("FALSE_DATA", nrow(data_partner_syn$syn)), data_partner_syn$syn)
+summary(data_partner_syn)
+
+# Extract the actual dataset (rather than it being stored within a list)
+data_partner_syn_df <- data_partner_syn$syn
+head(data_partner_syn_df)
+glimpse(data_partner_syn_df)
+summary(data_partner_syn_df)
 
 
 ### Store the synthetic dataset for others to use

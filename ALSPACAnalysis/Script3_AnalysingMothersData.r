@@ -47,6 +47,8 @@ data_mum <- data_mum %>%
 ## If using synthesised data here, read this dataset in instead - NOTE: The sample size is slightly smaller in the synthetic dataset, as unique replicates with identical data in both the observed and synthetic data have been removed for confidentiality reasons. Also, the statistics in the script below refer to the observed data, and will differ for the synthetic data
 #load("./AnalysisCode_BloodDonation_B4030/ALSPACAnalysis/syntheticData_mum_B4030.RData")
 #data_mum <- data_mum_syn_df
+#data_mum <- data_mum %>%
+#  select(-FALSE_DATA) ## Drop the 'FALSE_DATA' column
 
 
 ### Some descriptive stats of exposures and outcomes
@@ -292,6 +294,19 @@ mum_results <- as.data.frame(cbind(model = rep(c("CCA (n = 7,341)", "MI (n = 13,
                                    ))
 mum_results
 
+## Also make a data frame to store the differences in probabilities of donating blood
+mum_results_prob <- as.data.frame(cbind(model = rep(c("CCA (n = 7,341)", "MI (n = 13,477)"), each = 9),
+                                   exposure = rep(c("Belief", "Belief", "Belief",
+                                                    "Identity", "Identity", "Identity",
+                                                    "Attend", "Attend", "Attend"), 2),
+                                   adjustment = rep(c("Unadjusted", "Confounders only", 
+                                                      "Confounders and/or mediators"), 6),
+                                   diff = rep(NA, 18),
+                                   lower_CI = rep(NA, 18),
+                                   upper_CI = rep(NA, 18)
+                                   ))
+mum_results_prob
+
 
 ### First exposure: Religious belief
 
@@ -319,6 +334,18 @@ mum_results$p[mum_results$model == "CCA (n = 7,341)" & mum_results$exposure == "
 # Probability of difference of donating blood
 avg_comparisons(mod.belief_unadj)
 
+mum_results_prob$diff[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Belief" & 
+                        mum_results_prob$adjustment == "Unadjusted"] <- 
+  round(avg_comparisons(mod.belief_unadj)$estimate * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round(avg_comparisons(mod.belief_unadj)$conf.low * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round(avg_comparisons(mod.belief_unadj)$conf.high * 100, 2)
+
 
 ## Adjusted for assumed confounders (age, ethnicity, socio-economic position, urban/rural status, recent financial difficulties, employment status, month of questionnaire completion, and whether questionnaire completed during pregnancy or not)
 mod.belief_adjCon <- glm(mum_donate ~ mum_belief + mum_age + mum_ethnicity + mum_edu + home + imd + rural + 
@@ -345,6 +372,18 @@ mum_results$p[mum_results$model == "CCA (n = 7,341)" & mum_results$exposure == "
 
 # Probability of difference of donating blood
 avg_comparisons(mod.belief_adjCon, variable = "mum_belief")
+
+mum_results_prob$diff[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Belief" & 
+                        mum_results_prob$adjustment == "Confounders only"] <- 
+  round(avg_comparisons(mod.belief_adjCon, variable = "mum_belief")$estimate * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round(avg_comparisons(mod.belief_adjCon, variable = "mum_belief")$conf.low * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round(avg_comparisons(mod.belief_adjCon, variable = "mum_belief")$conf.high * 100, 2)
 
 
 ## Adjusted for assumed confounders (as above) and potential confounders and/or mediators (marital status, parity, locus of control and health status)
@@ -374,6 +413,18 @@ mum_results$p[mum_results$model == "CCA (n = 7,341)" & mum_results$exposure == "
 # Probability of difference of donating blood
 avg_comparisons(mod.belief_adjConMed, variable = "mum_belief")
 
+mum_results_prob$diff[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Belief" & 
+                        mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round(avg_comparisons(mod.belief_adjConMed, variable = "mum_belief")$estimate * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round(avg_comparisons(mod.belief_adjConMed, variable = "mum_belief")$conf.low * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round(avg_comparisons(mod.belief_adjConMed, variable = "mum_belief")$conf.high * 100, 2)
+
 
 
 ### Second exposure: Religious identity
@@ -402,6 +453,18 @@ mum_results$p[mum_results$model == "CCA (n = 7,341)" & mum_results$exposure == "
 # Probability of difference of donating blood
 avg_comparisons(mod.identity_unadj)
 
+mum_results_prob$diff[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Identity" & 
+                        mum_results_prob$adjustment == "Unadjusted"] <- 
+  round(avg_comparisons(mod.identity_unadj)$estimate * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round(avg_comparisons(mod.identity_unadj)$conf.low * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round(avg_comparisons(mod.identity_unadj)$conf.high * 100, 2)
+
 
 ## Adjusted for assumed confounders (age, ethnicity, socio-economic position, urban/rural status, recent financial difficulties, employment status, month of questionnaire completion, and whether questionnaire completed during pregnancy or not)
 mod.identity_adjCon <- glm(mum_donate ~ mum_identity + mum_age + mum_ethnicity + mum_edu + home + imd + rural + 
@@ -428,6 +491,18 @@ mum_results$p[mum_results$model == "CCA (n = 7,341)" & mum_results$exposure == "
 
 # Probability of difference of donating blood
 avg_comparisons(mod.identity_adjCon, variable = "mum_identity")
+
+mum_results_prob$diff[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Identity" & 
+                        mum_results_prob$adjustment == "Confounders only"] <- 
+  round(avg_comparisons(mod.identity_adjCon, variable = "mum_identity")$estimate * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round(avg_comparisons(mod.identity_adjCon, variable = "mum_identity")$conf.low * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round(avg_comparisons(mod.identity_adjCon, variable = "mum_identity")$conf.high * 100, 2)
 
 
 ## Adjusted for assumed confounders (as above) and potential confounders and/or mediators (marital status, parity, locus of control and health status)
@@ -457,6 +532,18 @@ mum_results$p[mum_results$model == "CCA (n = 7,341)" & mum_results$exposure == "
 # Probability of difference of donating blood
 avg_comparisons(mod.identity_adjConMed, variable = "mum_identity")
 
+mum_results_prob$diff[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Identity" & 
+                        mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round(avg_comparisons(mod.identity_adjConMed, variable = "mum_identity")$estimate * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round(avg_comparisons(mod.identity_adjConMed, variable = "mum_identity")$conf.low * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round(avg_comparisons(mod.identity_adjConMed, variable = "mum_identity")$conf.high * 100, 2)
+
 
 ### Third exposure: Religious attendance
 
@@ -483,6 +570,18 @@ mum_results$p[mum_results$model == "CCA (n = 7,341)" & mum_results$exposure == "
 
 # Probability of difference of donating blood
 avg_comparisons(mod.attend_unadj)
+
+mum_results_prob$diff[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Attend" & 
+                        mum_results_prob$adjustment == "Unadjusted"] <- 
+  round(avg_comparisons(mod.attend_unadj)$estimate * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round(avg_comparisons(mod.attend_unadj)$conf.low * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round(avg_comparisons(mod.attend_unadj)$conf.high * 100, 2)
 
 
 ## Adjusted for assumed confounders (age, ethnicity, socio-economic position, urban/rural status, recent financial difficulties, employment status, month of questionnaire completion, and whether questionnaire completed during pregnancy or not)
@@ -511,6 +610,18 @@ mum_results$p[mum_results$model == "CCA (n = 7,341)" & mum_results$exposure == "
 # Probability of difference of donating blood
 avg_comparisons(mod.attend_adjCon, variable = "mum_attend")
 
+mum_results_prob$diff[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Attend" & 
+                        mum_results_prob$adjustment == "Confounders only"] <- 
+  round(avg_comparisons(mod.attend_adjCon, variable = "mum_attend")$estimate * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round(avg_comparisons(mod.attend_adjCon, variable = "mum_attend")$conf.low * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round(avg_comparisons(mod.attend_adjCon, variable = "mum_attend")$conf.high * 100, 2)
+
 
 ## Adjusted for assumed confounders (as above) and potential confounders and/or mediators (marital status, parity, locus of control and health status)
 mod.attend_adjConMed <- glm(mum_donate ~ mum_attend + mum_age + mum_ethnicity + mum_edu + home + imd + rural +
@@ -538,6 +649,18 @@ mum_results$p[mum_results$model == "CCA (n = 7,341)" & mum_results$exposure == "
 
 # Probability of difference of donating blood
 avg_comparisons(mod.attend_adjConMed, variable = "mum_attend")
+
+mum_results_prob$diff[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Attend" & 
+                        mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round(avg_comparisons(mod.attend_adjConMed, variable = "mum_attend")$estimate * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round(avg_comparisons(mod.attend_adjConMed, variable = "mum_attend")$conf.low * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "CCA (n = 7,341)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round(avg_comparisons(mod.attend_adjConMed, variable = "mum_attend")$conf.high * 100, 2)
 
 
 
@@ -616,7 +739,7 @@ imp_chains <- mice(data_mum, m = 10, method = meth, predictorMatrix = pred, prin
 
 ## Save these imputations, to avoid having to run the imputations again
 save(imp_chains, file = "data_mum_MIChainTest.RData")
-#load("data_mum_MI.RData")
+#load("data_mum_MIChainTest.RData")
 
 plot(imp_chains)
 
@@ -682,6 +805,41 @@ mum_results$p[mum_results$model == "MI (n = 13,477)" & mum_results$exposure == "
   round(res.belief_unadj_mi$p.value[res.belief_unadj_mi$term == "mum_beliefYes"], 4)
 
 
+## And now for difference in probability by religion - Have to run this manually on each imputed dataset, then combine together using Rubin's rules
+
+# Set up a matrix to store results in
+temp <- matrix(data = NA, nrow = 50, ncol = 2)
+
+# Loop over each dataset, storing the difference in probabilities and associated SE in the above matrix
+for (i in 1:50) {
+  print(paste0("On imputed dataset: ", i))
+  df_temp <- complete(imp, i)
+  mod_temp <- glm(mum_donate ~ mum_belief, family = "binomial", data = df_temp)
+  temp[i, 1] <- avg_comparisons(mod_temp)$estimate
+  temp[i, 2] <- avg_comparisons(mod_temp)$std.error
+}
+temp
+
+# Generate mean value and SE using Rubin's rules
+(mean_RR <- mean(temp[, 1]))
+(var_within <- mean(temp[, 2] ^ 2))
+(var_between <- ((1 / (50 - 1)) * sum((temp[, 1] - mean_RR) ^ 2)))
+(var_total <- var_within + ((1 + (1 / 50)) * var_between))
+(se_total <- sqrt(var_total))
+
+# Add these to probability table
+mum_results_prob$diff[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Belief" & 
+                      mum_results_prob$adjustment == "Unadjusted"] <- round(mean_RR * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round((mean_RR - (1.96 * se_total)) * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round((mean_RR + (1.96 * se_total)) * 100, 2)
+
+
 ## Adjusted for assumed confounders (age, ethnicity, socio-economic position, urban/rural status, recent financial difficulties, employment status, month of questionnaire completion, and whether questionnaire completed during pregnancy or not)
 mod.belief_adjCon_mi <- pool(with(imp, glm(mum_donate ~ mum_belief + mum_age + mum_ethnicity + mum_edu + 
                                              home + imd + rural + mum_finDiffs + mum_employed + 
@@ -705,6 +863,44 @@ mum_results$upper_CI[mum_results$model == "MI (n = 13,477)" & mum_results$exposu
 mum_results$p[mum_results$model == "MI (n = 13,477)" & mum_results$exposure == "Belief" & 
                 mum_results$adjustment == "Confounders only"] <- 
   round(res.belief_adjCon_mi$p.value[res.belief_adjCon_mi$term == "mum_beliefYes"], 4)
+
+
+## And now for difference in probability by religion - Have to run this manually on each imputed dataset, then combine together using Rubin's rules
+
+# Set up a matrix to store results in
+temp <- matrix(data = NA, nrow = 50, ncol = 2)
+
+# Loop over each dataset, storing the difference in probabilities and associated SE in the above matrix
+for (i in 1:50) {
+  print(paste0("On imputed dataset: ", i))
+  df_temp <- complete(imp, i)
+  mod_temp <- glm(mum_donate ~ mum_belief + mum_age + mum_ethnicity + mum_edu + home + imd + rural + 
+                    mum_finDiffs + mum_employed + mum_compMonth + comp_postPreg, 
+                  family = "binomial", data = df_temp)
+  temp[i, 1] <- avg_comparisons(mod_temp, variable = "mum_belief")$estimate
+  temp[i, 2] <- avg_comparisons(mod_temp, variable = "mum_belief")$std.error
+}
+temp
+
+# Generate mean value and SE using Rubin's rules
+(mean_RR <- mean(temp[, 1]))
+(var_within <- mean(temp[, 2] ^ 2))
+(var_between <- ((1 / (50 - 1)) * sum((temp[, 1] - mean_RR) ^ 2)))
+(var_total <- var_within + ((1 + (1 / 50)) * var_between))
+(se_total <- sqrt(var_total))
+
+# Add these to probability table
+mum_results_prob$diff[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Belief" & 
+                        mum_results_prob$adjustment == "Confounders only"] <- round(mean_RR * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round((mean_RR - (1.96 * se_total)) * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round((mean_RR + (1.96 * se_total)) * 100, 2)
+
 
 ## Adjusted for assumed confounders (as above) and potential confounders and/or mediators (marital status, parity, locus of control and health status)
 mod.belief_adjConMed_mi <- pool(with(imp, glm(mum_donate ~ mum_belief + mum_age + mum_ethnicity + mum_edu + 
@@ -732,6 +928,43 @@ mum_results$p[mum_results$model == "MI (n = 13,477)" & mum_results$exposure == "
   round(res.belief_adjConMed_mi$p.value[res.belief_adjConMed_mi$term == "mum_beliefYes"], 4)
 
 
+## And now for difference in probability by religion - Have to run this manually on each imputed dataset, then combine together using Rubin's rules
+
+# Set up a matrix to store results in
+temp <- matrix(data = NA, nrow = 50, ncol = 2)
+
+# Loop over each dataset, storing the difference in probabilities and associated SE in the above matrix
+for (i in 1:50) {
+  print(paste0("On imputed dataset: ", i))
+  df_temp <- complete(imp, i)
+  mod_temp <- glm(mum_donate ~ mum_belief + mum_age + mum_ethnicity + mum_edu + home + imd + rural + 
+                    mum_finDiffs + mum_employed + mum_compMonth + comp_postPreg + mum_marital + 
+                    parity + mum_locus + mum_health, 
+                  family = "binomial", data = df_temp)
+  temp[i, 1] <- avg_comparisons(mod_temp, variable = "mum_belief")$estimate
+  temp[i, 2] <- avg_comparisons(mod_temp, variable = "mum_belief")$std.error
+}
+temp
+
+# Generate mean value and SE using Rubin's rules
+(mean_RR <- mean(temp[, 1]))
+(var_within <- mean(temp[, 2] ^ 2))
+(var_between <- ((1 / (50 - 1)) * sum((temp[, 1] - mean_RR) ^ 2)))
+(var_total <- var_within + ((1 + (1 / 50)) * var_between))
+(se_total <- sqrt(var_total))
+
+# Add these to probability table
+mum_results_prob$diff[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Belief" & 
+                        mum_results_prob$adjustment == "Confounders and/or mediators"] <- round(mean_RR * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round((mean_RR - (1.96 * se_total)) * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Belief" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round((mean_RR + (1.96 * se_total)) * 100, 2)
+
 
 ### Second exposure: Religious identity
 
@@ -757,6 +990,41 @@ mum_results$p[mum_results$model == "MI (n = 13,477)" & mum_results$exposure == "
   round(res.identity_unadj_mi$p.value[res.identity_unadj_mi$term == "mum_identityReligious"], 4)
 
 
+## And now for difference in probability by religion - Have to run this manually on each imputed dataset, then combine together using Rubin's rules
+
+# Set up a matrix to store results in
+temp <- matrix(data = NA, nrow = 50, ncol = 2)
+
+# Loop over each dataset, storing the difference in probabilities and associated SE in the above matrix
+for (i in 1:50) {
+  print(paste0("On imputed dataset: ", i))
+  df_temp <- complete(imp, i)
+  mod_temp <- glm(mum_donate ~ mum_identity, family = "binomial", data = df_temp)
+  temp[i, 1] <- avg_comparisons(mod_temp)$estimate
+  temp[i, 2] <- avg_comparisons(mod_temp)$std.error
+}
+temp
+
+# Generate mean value and SE using Rubin's rules
+(mean_RR <- mean(temp[, 1]))
+(var_within <- mean(temp[, 2] ^ 2))
+(var_between <- ((1 / (50 - 1)) * sum((temp[, 1] - mean_RR) ^ 2)))
+(var_total <- var_within + ((1 + (1 / 50)) * var_between))
+(se_total <- sqrt(var_total))
+
+# Add these to probability table
+mum_results_prob$diff[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Identity" & 
+                        mum_results_prob$adjustment == "Unadjusted"] <- round(mean_RR * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round((mean_RR - (1.96 * se_total)) * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round((mean_RR + (1.96 * se_total)) * 100, 2)
+
+
 ## Adjusted for assumed confounders (age, ethnicity, socio-economic position, urban/rural status, recent financial difficulties, employment status, month of questionnaire completion, and whether questionnaire completed during pregnancy or not)
 mod.identity_adjCon_mi <- pool(with(imp, glm(mum_donate ~ mum_identity + mum_age + mum_ethnicity + mum_edu + 
                                                home + imd + rural + mum_finDiffs + mum_employed + 
@@ -780,6 +1048,44 @@ mum_results$upper_CI[mum_results$model == "MI (n = 13,477)" & mum_results$exposu
 mum_results$p[mum_results$model == "MI (n = 13,477)" & mum_results$exposure == "Identity" & 
                 mum_results$adjustment == "Confounders only"] <- 
   round(res.identity_adjCon_mi$p.value[res.identity_adjCon_mi$term == "mum_identityReligious"], 4)
+
+
+## And now for difference in probability by religion - Have to run this manually on each imputed dataset, then combine together using Rubin's rules
+
+# Set up a matrix to store results in
+temp <- matrix(data = NA, nrow = 50, ncol = 2)
+
+# Loop over each dataset, storing the difference in probabilities and associated SE in the above matrix
+for (i in 1:50) {
+  print(paste0("On imputed dataset: ", i))
+  df_temp <- complete(imp, i)
+  mod_temp <- glm(mum_donate ~ mum_identity + mum_age + mum_ethnicity + mum_edu + home + imd + rural + 
+                    mum_finDiffs + mum_employed + mum_compMonth + comp_postPreg, 
+                  family = "binomial", data = df_temp)
+  temp[i, 1] <- avg_comparisons(mod_temp, variable = "mum_identity")$estimate
+  temp[i, 2] <- avg_comparisons(mod_temp, variable = "mum_identity")$std.error
+}
+temp
+
+# Generate mean value and SE using Rubin's rules
+(mean_RR <- mean(temp[, 1]))
+(var_within <- mean(temp[, 2] ^ 2))
+(var_between <- ((1 / (50 - 1)) * sum((temp[, 1] - mean_RR) ^ 2)))
+(var_total <- var_within + ((1 + (1 / 50)) * var_between))
+(se_total <- sqrt(var_total))
+
+# Add these to probability table
+mum_results_prob$diff[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Identity" & 
+                        mum_results_prob$adjustment == "Confounders only"] <- round(mean_RR * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round((mean_RR - (1.96 * se_total)) * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round((mean_RR + (1.96 * se_total)) * 100, 2)
+
 
 ## Adjusted for assumed confounders (as above) and potential confounders and/or mediators (marital status, parity, locus of control and health status)
 mod.identity_adjConMed_mi <- pool(with(imp, glm(mum_donate ~ mum_identity + mum_age + mum_ethnicity + mum_edu + 
@@ -807,6 +1113,44 @@ mum_results$p[mum_results$model == "MI (n = 13,477)" & mum_results$exposure == "
   round(res.identity_adjConMed_mi$p.value[res.identity_adjConMed_mi$term == "mum_identityReligious"], 4)
 
 
+## And now for difference in probability by religion - Have to run this manually on each imputed dataset, then combine together using Rubin's rules
+
+# Set up a matrix to store results in
+temp <- matrix(data = NA, nrow = 50, ncol = 2)
+
+# Loop over each dataset, storing the difference in probabilities and associated SE in the above matrix
+for (i in 1:50) {
+  print(paste0("On imputed dataset: ", i))
+  df_temp <- complete(imp, i)
+  mod_temp <- glm(mum_donate ~ mum_identity + mum_age + mum_ethnicity + mum_edu + home + imd + rural + 
+                    mum_finDiffs + mum_employed + mum_compMonth + comp_postPreg + mum_marital + 
+                    parity + mum_locus + mum_health, 
+                  family = "binomial", data = df_temp)
+  temp[i, 1] <- avg_comparisons(mod_temp, variable = "mum_identity")$estimate
+  temp[i, 2] <- avg_comparisons(mod_temp, variable = "mum_identity")$std.error
+}
+temp
+
+# Generate mean value and SE using Rubin's rules
+(mean_RR <- mean(temp[, 1]))
+(var_within <- mean(temp[, 2] ^ 2))
+(var_between <- ((1 / (50 - 1)) * sum((temp[, 1] - mean_RR) ^ 2)))
+(var_total <- var_within + ((1 + (1 / 50)) * var_between))
+(se_total <- sqrt(var_total))
+
+# Add these to probability table
+mum_results_prob$diff[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Identity" & 
+                        mum_results_prob$adjustment == "Confounders and/or mediators"] <- round(mean_RR * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round((mean_RR - (1.96 * se_total)) * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Identity" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round((mean_RR + (1.96 * se_total)) * 100, 2)
+
+
 
 ### Third exposure: Religious attendance
 
@@ -830,6 +1174,41 @@ mum_results$upper_CI[mum_results$model == "MI (n = 13,477)" & mum_results$exposu
 mum_results$p[mum_results$model == "MI (n = 13,477)" & mum_results$exposure == "Attend" & 
                 mum_results$adjustment == "Unadjusted"] <- 
   round(res.attend_unadj_mi$p.value[res.attend_unadj_mi$term == "mum_attendRegular"], 4)
+
+
+## And now for difference in probability by religion - Have to run this manually on each imputed dataset, then combine together using Rubin's rules
+
+# Set up a matrix to store results in
+temp <- matrix(data = NA, nrow = 50, ncol = 2)
+
+# Loop over each dataset, storing the difference in probabilities and associated SE in the above matrix
+for (i in 1:50) {
+  print(paste0("On imputed dataset: ", i))
+  df_temp <- complete(imp, i)
+  mod_temp <- glm(mum_donate ~ mum_attend, family = "binomial", data = df_temp)
+  temp[i, 1] <- avg_comparisons(mod_temp)$estimate
+  temp[i, 2] <- avg_comparisons(mod_temp)$std.error
+}
+temp
+
+# Generate mean value and SE using Rubin's rules
+(mean_RR <- mean(temp[, 1]))
+(var_within <- mean(temp[, 2] ^ 2))
+(var_between <- ((1 / (50 - 1)) * sum((temp[, 1] - mean_RR) ^ 2)))
+(var_total <- var_within + ((1 + (1 / 50)) * var_between))
+(se_total <- sqrt(var_total))
+
+# Add these to probability table
+mum_results_prob$diff[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Attend" & 
+                        mum_results_prob$adjustment == "Unadjusted"] <- round(mean_RR * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round((mean_RR - (1.96 * se_total)) * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Unadjusted"] <- 
+  round((mean_RR + (1.96 * se_total)) * 100, 2)
 
 
 ## Adjusted for assumed confounders (age, ethnicity, socio-economic position, urban/rural status, recent financial difficulties, employment status, month of questionnaire completion, and whether questionnaire completed during pregnancy or not)
@@ -856,6 +1235,44 @@ mum_results$p[mum_results$model == "MI (n = 13,477)" & mum_results$exposure == "
                 mum_results$adjustment == "Confounders only"] <- 
   round(res.attend_adjCon_mi$p.value[res.attend_adjCon_mi$term == "mum_attendRegular"], 4)
 
+
+## And now for difference in probability by religion - Have to run this manually on each imputed dataset, then combine together using Rubin's rules
+
+# Set up a matrix to store results in
+temp <- matrix(data = NA, nrow = 50, ncol = 2)
+
+# Loop over each dataset, storing the difference in probabilities and associated SE in the above matrix
+for (i in 1:50) {
+  print(paste0("On imputed dataset: ", i))
+  df_temp <- complete(imp, i)
+  mod_temp <- glm(mum_donate ~ mum_attend + mum_age + mum_ethnicity + mum_edu + home + imd + rural + 
+                    mum_finDiffs + mum_employed + mum_compMonth + comp_postPreg, 
+                  family = "binomial", data = df_temp)
+  temp[i, 1] <- avg_comparisons(mod_temp, variable = "mum_attend")$estimate
+  temp[i, 2] <- avg_comparisons(mod_temp, variable = "mum_attend")$std.error
+}
+temp
+
+# Generate mean value and SE using Rubin's rules
+(mean_RR <- mean(temp[, 1]))
+(var_within <- mean(temp[, 2] ^ 2))
+(var_between <- ((1 / (50 - 1)) * sum((temp[, 1] - mean_RR) ^ 2)))
+(var_total <- var_within + ((1 + (1 / 50)) * var_between))
+(se_total <- sqrt(var_total))
+
+# Add these to probability table
+mum_results_prob$diff[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Attend" & 
+                        mum_results_prob$adjustment == "Confounders only"] <- round(mean_RR * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round((mean_RR - (1.96 * se_total)) * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Confounders only"] <- 
+  round((mean_RR + (1.96 * se_total)) * 100, 2)
+
+
 ## Adjusted for assumed confounders (as above) and potential confounders and/or mediators (marital status, parity, locus of control and health status)
 mod.attend_adjConMed_mi <- pool(with(imp, glm(mum_donate ~ mum_attend + mum_age + mum_ethnicity + mum_edu + home + 
                                              imd + rural + mum_finDiffs + mum_employed + mum_compMonth + 
@@ -879,6 +1296,44 @@ mum_results$upper_CI[mum_results$model == "MI (n = 13,477)" & mum_results$exposu
 mum_results$p[mum_results$model == "MI (n = 13,477)" & mum_results$exposure == "Attend" & 
                 mum_results$adjustment == "Confounders and/or mediators"] <- 
   round(res.attend_adjConMed_mi$p.value[res.attend_adjConMed_mi$term == "mum_attendRegular"], 4)
+
+
+## And now for difference in probability by religion - Have to run this manually on each imputed dataset, then combine together using Rubin's rules
+
+# Set up a matrix to store results in
+temp <- matrix(data = NA, nrow = 50, ncol = 2)
+
+# Loop over each dataset, storing the difference in probabilities and associated SE in the above matrix
+for (i in 1:50) {
+  print(paste0("On imputed dataset: ", i))
+  df_temp <- complete(imp, i)
+  mod_temp <- glm(mum_donate ~ mum_attend + mum_age + mum_ethnicity + mum_edu + home + imd + rural + 
+                    mum_finDiffs + mum_employed + mum_compMonth + comp_postPreg + mum_marital + 
+                    parity + mum_locus + mum_health, 
+                  family = "binomial", data = df_temp)
+  temp[i, 1] <- avg_comparisons(mod_temp, variable = "mum_attend")$estimate
+  temp[i, 2] <- avg_comparisons(mod_temp, variable = "mum_attend")$std.error
+}
+temp
+
+# Generate mean value and SE using Rubin's rules
+(mean_RR <- mean(temp[, 1]))
+(var_within <- mean(temp[, 2] ^ 2))
+(var_between <- ((1 / (50 - 1)) * sum((temp[, 1] - mean_RR) ^ 2)))
+(var_total <- var_within + ((1 + (1 / 50)) * var_between))
+(se_total <- sqrt(var_total))
+
+# Add these to probability table
+mum_results_prob$diff[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Attend" & 
+                        mum_results_prob$adjustment == "Confounders and/or mediators"] <- round(mean_RR * 100, 2)
+
+mum_results_prob$lower_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round((mean_RR - (1.96 * se_total)) * 100, 2)
+
+mum_results_prob$upper_CI[mum_results_prob$model == "MI (n = 13,477)" & mum_results_prob$exposure == "Attend" & 
+                            mum_results_prob$adjustment == "Confounders and/or mediators"] <- 
+  round((mean_RR + (1.96 * se_total)) * 100, 2)
 
 
 
@@ -962,6 +1417,86 @@ mum_results_plot_CCA
 pdf("./Results/MotherResults/mum_results_CCA_plot.pdf", width = 8, height = 8)
 p_combined_CCA
 dev.off()
+
+
+### And repeat for differences in probability results
+mum_results_prob
+
+# Convert numeric results to numeric
+mum_results_prob <- mum_results_prob %>%
+  mutate(diff = as.numeric(diff)) %>%
+  mutate(lower_CI = as.numeric(lower_CI)) %>%
+  mutate(upper_CI = as.numeric(upper_CI))
+
+mum_results_prob
+glimpse(mum_results_prob)
+
+# Save these results
+write_csv(mum_results_prob, file = "./Results/MotherResults/mum_results_CCAvsMI_probs.csv")
+
+
+## Make a nice forest plot comparing these results
+
+# Set 'exposure' as a factor first
+mum_results_prob_plot <- mum_results_prob %>%
+  mutate(exposure = factor(exposure, levels = c("Belief", "Identity", "Attend")))
+mum_results_prob_plot
+
+# Make one plot with all data combined, then use 'facet_wrap to split apart afterwards, maintaining a shared y-axis and legend
+(p_combined_prob <- ggplot(mum_results_prob_plot, aes(x = adjustment, y = diff, ymin = lower_CI, ymax = upper_CI, 
+                                            col = fct_rev(model), fill = fct_rev(model))) + 
+    geom_hline(yintercept = 0, lty = 2) +
+    geom_linerange(size = 0.5, position = position_dodge(width = 0.75), show.legend = FALSE) +
+    geom_point(size = 2, position = position_dodge(width = 0.75)) +
+    scale_fill_manual(values = c("red", "black"), guide = guide_legend(reverse = TRUE, byrow = TRUE), name = "Model",
+                      labels = c("Multiple\nimputation\n(n = 13,477)", "Complete-case\nanalysis\n(n = 7,341)")) +
+    scale_color_manual(values = c("red", "black"), guide = guide_legend(reverse = TRUE, byrow = TRUE), name = "Model",
+                       labels = c("Multiple\nimputation\n(n = 13,477)", "Complete-case\nanalysis\n(n = 7,341)")) +
+    scale_y_continuous(breaks = c(-2, 0, 2, 4, 6, 8, 10, 12), limits = c(-3.5, 13)) +
+    labs(x = "", y = "Predicted difference in blood donation (%)",) +
+    coord_flip() +
+    theme_bw() + 
+    facet_wrap(exposure ~ ., ncol = 1, labeller = as_labeller(c(Belief = "Religious Belief", 
+                                                                Identity = "Religious Affiliation",
+                                                                Attend = "Religious Attendance"))) +
+    theme(panel.grid.minor = element_blank(), axis.text = element_text(size = 12),
+          legend.text = element_text(size = 10), legend.title = element_text(size = 12),
+          axis.title.x = element_text(size = 14), strip.background = element_blank(),
+          strip.text = element_text(size = 14), legend.spacing.y = unit(0.25, 'cm')))
+
+## Save this plot
+pdf("./Results/MotherResults/mum_results_CCAvsMI_prob_plot.pdf", width = 8, height = 8)
+p_combined_prob
+dev.off()
+
+
+## Plot with just CCA results
+mum_results_prob_plot_CCA <- mum_results_prob_plot %>%
+  filter(model == "CCA (n = 7,341)")
+mum_results_prob_plot_CCA
+
+(p_combined_prob_CCA <- ggplot(mum_results_prob_plot_CCA, aes(x = adjustment, y = diff, ymin = lower_CI, 
+                                                              ymax = upper_CI)) + 
+    geom_hline(yintercept = 0, lty = 2) +
+    geom_linerange(size = 0.5) +
+    geom_point(size = 2) +
+    scale_y_continuous(breaks = c(-2, 0, 2, 4, 6, 8, 10, 12), limits = c(-3.5, 13)) +
+    labs(x = "", y = "Predicted difference in blood donation (%)",) +
+    coord_flip() +
+    theme_bw() + 
+    facet_wrap(exposure ~ ., ncol = 1, labeller = as_labeller(c(Belief = "Religious Belief", 
+                                                                Identity = "Religious Affiliation",
+                                                                Attend = "Religious Attendance"))) +
+    theme(panel.grid.minor = element_blank(), axis.text = element_text(size = 12),
+          legend.text = element_text(size = 10), legend.title = element_text(size = 12),
+          axis.title.x = element_text(size = 14), strip.background = element_blank(),
+          strip.text = element_text(size = 14)))
+
+## Save this plot
+pdf("./Results/MotherResults/mum_results_CCA_prob_plot.pdf", width = 8, height = 8)
+p_combined_prob_CCA
+dev.off()
+
 
 
 ######################################################################################################
